@@ -12,7 +12,7 @@ public static class KafkaConfiguration
         services.AddSwaggerGen();
 
         // Register Kafka services with configurable settings
-        var kafkaBroker = configuration.GetValue<string>("Kafka:Broker") ?? "127.0.0.1:9092";
+        var kafkaBroker = configuration.GetValue<string>("Kafka:Broker") ?? "localhost:9092";
         var kafkaGroupId = configuration.GetValue<string>("Kafka:GroupId") ?? "in-cart-group";
         var kafkaTopic = configuration.GetValue<string>("Kafka:Topic") ?? "cart-topic";
 
