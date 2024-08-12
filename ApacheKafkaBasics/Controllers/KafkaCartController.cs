@@ -1,7 +1,9 @@
 // KafkaController.cs
 
-using ApacheKafkaBasics.Interfaces;
+using System.Net;
 using ApacheKafkaBasics.Services;
+using Confluent.Kafka;
+using Confluent.SchemaRegistry;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApacheKafkaBasics.Controllers;
@@ -14,6 +16,7 @@ public class KafkaCartController(KafkaProducerService kafkaProducerService, Kafk
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] string message)
     {
+
         await kafkaProducerService.ProduceAsync("cart-topic", message);
         return Ok("Message sent to Kafka");
     }
