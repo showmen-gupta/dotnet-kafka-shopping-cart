@@ -10,7 +10,7 @@ namespace ApacheKafkaBasics.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class KafkaCartController(KafkaProducerService kafkaProducerService, KafkaConsumerService kafkaConsumerService)
+public class KafkaCartProcessController(KafkaProducerService kafkaProducerService, KafkaConsumerService kafkaConsumerService)
     : Controller
 {
     [HttpPost]
