@@ -1,15 +1,8 @@
 namespace ApacheKafkaBasics.Models;
 
-public class Product
+public abstract class Product(int productId, string name, decimal price)
 {
-    public int ProductId { get; set; }
-    public string Name { get; set; }
-    public decimal Price { get; set; }
-
-    public Product(int productId, string name, decimal price)
-    {
-        ProductId = productId;
-        Name = name;
-        Price = price;
-    }
+    public int ProductId { get; set; } = productId;
+    public string Name { get; set; } = name;
+    public decimal Price { get; set; } = price;
 }
