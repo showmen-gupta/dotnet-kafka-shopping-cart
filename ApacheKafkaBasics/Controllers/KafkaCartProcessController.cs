@@ -1,9 +1,6 @@
 // KafkaController.cs
 
-using System.Net;
 using ApacheKafkaBasics.Services;
-using Confluent.Kafka;
-using Confluent.SchemaRegistry;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApacheKafkaBasics.Controllers;

@@ -1,3 +1,5 @@
+using ApacheKafkaBasics.Interfaces;
+using ApacheKafkaBasics.Repositories;
 using ApacheKafkaBasics.Services;
 
 namespace ApacheKafkaBasics.Configuration;
@@ -19,6 +21,7 @@ public static class KafkaConfiguration
         services.AddSingleton<KafkaProducerService>(sp => new KafkaProducerService(kafkaBroker));
         services.AddSingleton<KafkaConsumerService>(sp =>
             new KafkaConsumerService(kafkaBroker, kafkaGroupId, kafkaTopic));
+        services.AddSingleton<IShoppingCart, ShoppingCart>();
     }
 
     public static void ConfigureMiddleware(WebApplication application)
