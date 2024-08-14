@@ -1,24 +1,21 @@
 using System.Net;
 using ApacheKafkaBasics.Interfaces;
+using ApacheKafkaBasics.Models;
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
 using Confluent.SchemaRegistry;
+using Confluent.SchemaRegistry.Serdes;
 
 namespace ApacheKafkaBasics.Services;
 
 public class KafkaProducerService : IKafkaProducerService
 {
-    private readonly IProducer<Null, string> _producer;
+    private readonly IProducer<string, CartItem> _producer;
+    private readonly IAdminClient _adminClient;
 
     public KafkaProducerService(string brokerList)
     {
-        var config = new ProducerConfig { BootstrapServers = brokerList };
-        _producer = new ProducerBuilder<Null, string>(config).Build();
-    }
-    
-    public async Task CreateKafkaCartTopic()
-    {
-        var adminConfig = new AdminClientConfig { BootstrapServers = "127.0.0.1:9092" };
+        var adminConfig = new AdminClientConfig { BootstrapServers = brokerList };
         var schemaRegistryConfig = new SchemaRegistryConfig { Url = "http://127.0.0.1:8081" };
         var producerConfig = new ProducerConfig
         {
@@ -27,11 +24,22 @@ public class KafkaProducerService : IKafkaProducerService
             EnableDeliveryReports = true,
             ClientId = Dns.GetHostName()
         };
-        using var adminClient = new AdminClientBuilder(adminConfig).Build();
 
+        var schemaRegistry = new CachedSchemaRegistryClient(schemaRegistryConfig);
+
+        _adminClient = new AdminClientBuilder(adminConfig).Build();
+
+        _producer = new ProducerBuilder<string, CartItem>(producerConfig)
+            .SetKeySerializer(new AvroSerializer<string>(schemaRegistry))
+            .SetValueSerializer(new AvroSerializer<CartItem>(schemaRegistry))
+            .Build();
+    }
+
+    public async Task CreateKafkaCartTopic(List<CartItem> cartItems, string topic)
+    {
         try
         {
-            await adminClient.CreateTopicsAsync(new[]
+            await _adminClient.CreateTopicsAsync(new[]
             {
                 new TopicSpecification
                 {
@@ -40,24 +48,24 @@ public class KafkaProducerService : IKafkaProducerService
                     NumPartitions = 3
                 }
             });
+
+            foreach (var cartItem in cartItems.Select(item => new CartItem(item.Product, item.Quantity)))
+            {
+                var result = await _producer.ProduceAsync(topic,
+                    new Message<string, CartItem>
+                    {
+                        Key = $"{cartItem.Product.ProductId}-{DateTime.UtcNow.Ticks}",
+                        Value = cartItem
+                    });
+                
+                Console.WriteLine(
+                    $"\nMsg: Your leave request is queued at offset {result.Offset.Value} in the Topic {result.Topic}");
+            }
         }
         catch (CreateTopicsException e) when (e.Results.Select(r => r.Error.Code)
                                                   .Any(el => el == ErrorCode.TopicAlreadyExists))
         {
             Console.WriteLine($"Topic {e.Results[0].Topic} already exists");
-        }
-    }
-
-    public async Task ProduceAsync(string topic, string message)
-    {
-        try
-        {
-            var result = await _producer.ProduceAsync(topic, new Message<Null, string> { Value = message });
-            Console.WriteLine($"Delivered '{result.Value}' to '{result.TopicPartitionOffset}'");
-        }
-        catch (ProduceException<Null, string> e)
-        {
-            Console.WriteLine($"Delivery failed: {e.Error.Reason}");
         }
     }
 }

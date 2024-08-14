@@ -1,5 +1,6 @@
 // KafkaCartProcessController.cs
 
+using ApacheKafkaBasics.Interfaces;
 using ApacheKafkaBasics.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,15 +8,24 @@ namespace ApacheKafkaBasics.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class KafkaCartProcessController(KafkaProducerService kafkaProducerService, KafkaConsumerService kafkaConsumerService)
+public class KafkaCartProcessController(
+    KafkaProducerService kafkaProducerService,
+    KafkaConsumerService kafkaConsumerService,
+    IShoppingCart shoppingCart)
     : Controller
 {
     [HttpPost]
-    public async Task<IActionResult> Post([FromBody] string message)
+    public async Task<IActionResult> Post()
     {
+        var cartItems = await shoppingCart.GetCartItems();
+        
+        if (cartItems.Count <= 0) return BadRequest("no item on the cart to send to kafka producer");
+        
+        const string topicName = "in-cart-items";
 
-        await kafkaProducerService.ProduceAsync("cart-topic", message);
+        await kafkaProducerService.CreateKafkaCartTopic(cartItems, topicName);
         return Ok("Message sent to Kafka");
+
     }
 
     [HttpGet]

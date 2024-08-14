@@ -1,7 +1,8 @@
+using ApacheKafkaBasics.Models;
+
 namespace ApacheKafkaBasics.Interfaces;
 
 public interface IKafkaProducerService
 {
-    public Task ProduceAsync(string topic, string message);
-    public Task CreateKafkaCartTopic();
+    public Task CreateKafkaCartTopic(List<CartItem> cartItems, string topic);
 }
