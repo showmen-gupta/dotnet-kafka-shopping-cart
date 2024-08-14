@@ -1,0 +1,10 @@
+{
+  "namespace": "Generated.Entity",
+  "type": "record",
+  "name": "Product",
+  "fields": [
+    {"name": "ProductId", "type": "int"},
+    {"name": "Name", "type": "string"},
+    {"name": "Price", "type": "double"}
+  ]
+}

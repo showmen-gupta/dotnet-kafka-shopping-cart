@@ -1,5 +1,5 @@
 using ApacheKafkaBasics.Interfaces;
-using ApacheKafkaBasics.Models;
+using Generated.Entity;
 
 namespace ApacheKafkaBasics.Repositories;
 
@@ -17,7 +17,12 @@ public class ShoppingCart : IShoppingCart
                 existingItem.Quantity += quantity;
             else
                 // Otherwise, add a new CartItem
-                _items.Add(new CartItem(product, quantity));
+                _items.Add(new CartItem
+                {
+                    Product = product,
+                    Quantity = quantity,
+                    TotalPrice = product.Price * quantity
+                });
 
             return Task.FromResult(true);
         }
@@ -40,13 +45,12 @@ public class ShoppingCart : IShoppingCart
         }
     }
 
-    public Task<decimal> GetTotalPrice()
+    public Task<double> GetTotalPrice()
     {
         try
         {
-            var total = _items.Sum(item => item.TotalPrice);
+            var total = _items.Sum(item => item.Product.Price * item.Quantity);
             return Task.FromResult(total);
-
         }
         catch (Exception ex)
         {
@@ -59,12 +63,10 @@ public class ShoppingCart : IShoppingCart
         try
         {
             return Task.FromResult(_items);
-
         }
         catch (Exception ex)
         {
             throw new BadHttpRequestException(ex.Message);
-
         }
     }
 }

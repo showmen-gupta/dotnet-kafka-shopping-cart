@@ -1,8 +1,8 @@
-using ApacheKafkaBasics.Models;
+using Generated.Entity;
 
 namespace ApacheKafkaBasics.Interfaces;
 
 public interface IKafkaProducerService
 {
-    public Task CreateKafkaCartTopic(List<CartItem> cartItems, string topic);
+    public Task CreateKafkaCartTopic(List<CartItem> cartItems);
 }

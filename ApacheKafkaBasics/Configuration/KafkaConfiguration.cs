@@ -16,9 +16,9 @@ public static class KafkaConfiguration
         // Register Kafka services with configurable settings
         var kafkaBroker = configuration.GetValue<string>("Kafka:Broker") ?? "localhost:9092";
         var kafkaGroupId = configuration.GetValue<string>("Kafka:GroupId") ?? "in-cart-group";
-        var kafkaTopic = configuration.GetValue<string>("Kafka:Topic") ?? "cart-topic";
+        var kafkaTopic = configuration.GetValue<string>("Kafka:Topic") ?? "in-cart-items";
 
-        services.AddSingleton<KafkaProducerService>(sp => new KafkaProducerService(kafkaBroker));
+        services.AddSingleton<KafkaProducerService>(sp => new KafkaProducerService(kafkaBroker, kafkaTopic));
         services.AddSingleton<KafkaConsumerService>(sp =>
             new KafkaConsumerService(kafkaBroker, kafkaGroupId, kafkaTopic));
         services.AddSingleton<IShoppingCart, ShoppingCart>();

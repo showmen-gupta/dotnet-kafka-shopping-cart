@@ -10,6 +10,7 @@
         <PackageReference Include="Confluent.Kafka" Version="2.5.2" />
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.5.2" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.3"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
     </ItemGroup>
 

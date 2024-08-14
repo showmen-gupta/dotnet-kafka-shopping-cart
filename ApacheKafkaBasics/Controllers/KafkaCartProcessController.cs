@@ -23,7 +23,7 @@ public class KafkaCartProcessController(
         
         const string topicName = "in-cart-items";
 
-        await kafkaProducerService.CreateKafkaCartTopic(cartItems, topicName);
+        await kafkaProducerService.CreateKafkaCartTopic(cartItems);
         return Ok("Message sent to Kafka");
 
     }

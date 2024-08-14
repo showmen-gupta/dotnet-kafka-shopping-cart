@@ -1,5 +1,5 @@
 using ApacheKafkaBasics.Interfaces;
-using ApacheKafkaBasics.Models;
+using Generated.Entity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApacheKafkaBasics.Controllers;
