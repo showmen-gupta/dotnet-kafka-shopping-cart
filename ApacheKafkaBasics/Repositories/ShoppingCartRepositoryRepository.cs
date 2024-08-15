@@ -3,7 +3,7 @@ using Generated.Entity;
 
 namespace ApacheKafkaBasics.Repositories;
 
-public class ShoppingCart : IShoppingCart
+public class ShoppingCartRepositoryRepository : IShoppingCartRepository
 {
     private readonly List<CartItem> _items = [];
 

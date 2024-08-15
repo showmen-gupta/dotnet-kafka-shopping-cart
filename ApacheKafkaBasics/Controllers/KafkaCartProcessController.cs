@@ -11,13 +11,13 @@ namespace ApacheKafkaBasics.Controllers;
 public class KafkaCartProcessController(
     KafkaProducerService kafkaProducerService,
     KafkaConsumerService kafkaConsumerService,
-    IShoppingCart shoppingCart)
+    IShoppingCartRepository shoppingCartRepository)
     : Controller
 {
     [HttpPost]
     public async Task<IActionResult> Post()
     {
-        var cartItems = await shoppingCart.GetCartItems();
+        var cartItems = await shoppingCartRepository.GetCartItems();
         
         if (cartItems.Count <= 0) return BadRequest("no item on the cart to send to kafka producer");
         

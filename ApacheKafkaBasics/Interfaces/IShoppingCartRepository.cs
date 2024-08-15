@@ -2,7 +2,7 @@ using Generated.Entity;
 
 namespace ApacheKafkaBasics.Interfaces;
 
-public interface IShoppingCart
+public interface IShoppingCartRepository
 {
     public Task<bool> AddProduct(Product product, int quantity);
     public Task<bool> RemoveProduct(int productId);

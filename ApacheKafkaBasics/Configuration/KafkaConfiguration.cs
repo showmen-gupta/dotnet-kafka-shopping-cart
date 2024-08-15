@@ -21,7 +21,7 @@ public static class KafkaConfiguration
         services.AddSingleton<KafkaProducerService>(sp => new KafkaProducerService(kafkaBroker, kafkaTopic));
         services.AddSingleton<KafkaConsumerService>(sp =>
             new KafkaConsumerService(kafkaBroker, kafkaGroupId, kafkaTopic));
-        services.AddSingleton<IShoppingCart, ShoppingCart>();
+        services.AddSingleton<IShoppingCartRepository, ShoppingCartRepositoryRepository>();
     }
 
     public static void ConfigureMiddleware(WebApplication application)
