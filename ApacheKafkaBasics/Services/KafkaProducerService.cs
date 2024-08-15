@@ -42,16 +42,23 @@ public class KafkaProducerService : IKafkaProducerService
     {
         try
         {
-            await _adminClient.CreateTopicsAsync(new[]
-            {
-                new TopicSpecification
-                {
-                    Name = _topicName,
-                    ReplicationFactor = 1,
-                    NumPartitions = 3
-                }
-            });
+            // Check if the topic already exists
+            var metadata = _adminClient.GetMetadata(_topicName, TimeSpan.FromSeconds(10));
+            var topicExists = metadata.Topics.Any(t => t.Topic == _topicName);
 
+            // Create the topic only if it doesn't exist
+            if (!topicExists)
+                await _adminClient.CreateTopicsAsync(new[]
+                {
+                    new TopicSpecification
+                    {
+                        Name = _topicName,
+                        ReplicationFactor = 1,
+                        NumPartitions = 3
+                    }
+                });
+
+            // Produce messages to the topic
             foreach (var cartValues in cartItems.Select(cartItem => new CartItem
                      {
                          Product = cartItem.Product,
@@ -70,10 +77,19 @@ public class KafkaProducerService : IKafkaProducerService
                     $"\nMsg: Your leave request is queued at offset {result.Offset.Value} in the Topic {result.Topic}");
             }
         }
-        catch (CreateTopicsException e) when (e.Results.Select(r => r.Error.Code)
-                                                  .Any(el => el == ErrorCode.TopicAlreadyExists))
+        catch (CreateTopicsException e)
         {
-            throw new BadHttpRequestException($"Topic {e.Results[0].Topic} already exists");
+            if (e.Results.Select(r => r.Error.Code).Any(el => el == ErrorCode.TopicAlreadyExists))
+                // Log the fact that the topic already exists
+                Console.WriteLine($"Topic {_topicName} already exists.");
+            else
+                throw;
+        }
+        catch (Exception ex)
+        {
+            // Handle other exceptions
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            throw;
         }
     }
 }
