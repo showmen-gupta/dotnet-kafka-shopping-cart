@@ -38,10 +38,10 @@ public class KafkaCartProcessController(
     [HttpPost("accept")]
     public IActionResult Accept()
     {
-        if (kafkaConsumerService.TryDequeueMessage(out var message))
+        //if (kafkaConsumerService.TryDequeueMessage(out var message))
             // Logic for accepting the message
             // E.g., save to database or mark as processed
-            return Ok($"Accepted message: {message}");
+            //return Ok($"Accepted message: {message}");
 
         return NotFound("No messages to accept");
     }
@@ -49,10 +49,10 @@ public class KafkaCartProcessController(
     [HttpPost("reject")]
     public IActionResult Reject()
     {
-        if (kafkaConsumerService.TryDequeueMessage(out var message))
+        //if (kafkaConsumerService.TryDequeueMessage(out var message))
             // Logic for rejecting the message
             // E.g., log the rejection or send to a dead-letter queue
-            return Ok($"Rejected message: {message}");
+            //return Ok($"Rejected message: {message}");
 
         return NotFound("No messages to reject");
     }

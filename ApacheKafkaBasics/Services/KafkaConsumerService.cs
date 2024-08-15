@@ -1,71 +1,87 @@
-using System.Collections.Concurrent;
 using ApacheKafkaBasics.Interfaces;
 using Confluent.Kafka;
+using Confluent.Kafka.SyncOverAsync;
+using Confluent.SchemaRegistry;
+using Confluent.SchemaRegistry.Serdes;
+using Generated.Entity;
 
 namespace ApacheKafkaBasics.Services;
 
 public class KafkaConsumerService : IKafkaConsumerService
 {
-    private readonly IConsumer<Null, string> _consumer;
-    private readonly ConcurrentQueue<string?> _messageQueue;
+    private readonly IConsumer<string, CartItem> _consumer;
+    private readonly ConsumerConfig _consumerConfig;
+
+    private record KafkaMessage(string Key, int Partition, CartItem Message);
 
     public KafkaConsumerService(string brokerList, string groupId, string topic)
     {
-        var config = new ConsumerConfig
-        {
-            GroupId = groupId,
-            BootstrapServers = brokerList,
-            AutoOffsetReset = AutoOffsetReset.Earliest
-        };
+        var schemaRegistryConfig = new SchemaRegistryConfig { Url = brokerList };
 
-        _consumer = new ConsumerBuilder<Null, string>(config).Build();
+        _consumerConfig = new ConsumerConfig
+        {
+            BootstrapServers = "127.0.0.1:9092",
+            GroupId = groupId,
+            EnableAutoCommit = false,
+            EnableAutoOffsetStore = false,
+            // Read messages from start if no commit exists.
+            AutoOffsetReset = AutoOffsetReset.Earliest,
+            MaxPollIntervalMs = 10000
+        };
+        var schemaRegistry = new CachedSchemaRegistryClient(schemaRegistryConfig);
+
+        _consumer = new ConsumerBuilder<string, CartItem>(_consumerConfig)
+            .SetKeyDeserializer(new AvroDeserializer<string>(schemaRegistry).AsSyncOverAsync())
+            .SetValueDeserializer(new AvroDeserializer<CartItem>(schemaRegistry).AsSyncOverAsync())
+            .SetErrorHandler((_, e) => Console.WriteLine($"Error: {e.Reason}"))
+            .Build();
+
         _consumer.Subscribe(topic);
-        _messageQueue = new ConcurrentQueue<string?>();
     }
 
 
-    public void Consume(CancellationToken cancellationToken)
+    public Task StartCartConsumer(CancellationToken cancellationToken)
     {
-        Task.Run(() =>
-        {
+        var cartItemMessages = new Queue<KafkaMessage>();
+        if (cartItemMessages == null) throw new ArgumentNullException(nameof(cartItemMessages));
+
+        Console.WriteLine("Consumer loop started...\n");
+        while (true)
             try
             {
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    var consumeResult = _consumer.Consume(cancellationToken);
-                    _messageQueue.Enqueue(consumeResult.Message.Value);
-                    Console.WriteLine(
-                        $"Consumed message '{consumeResult.Message.Value}' at: '{consumeResult.TopicPartitionOffset}'.");
-                }
+                var result =
+                    _consumer.Consume(
+                        TimeSpan.FromMilliseconds(_consumerConfig.MaxPollIntervalMs - 1000 ?? 250000));
+                var cartRequest = result?.Message?.Value;
+                if (cartRequest == null) continue;
+                
+
+                // Adding message to a list just for the demo.
+                // You should persist the message in database and process it later.
+                cartItemMessages.Enqueue(new KafkaMessage(result.Message.Key,
+                    result.Partition.Value, result.Message.Value));
+
+                _consumer.Commit(result);
+                _consumer.StoreOffset(result);
             }
-            catch (OperationCanceledException)
+            catch (ConsumeException e) when (!e.Error.IsFatal)
+            {
+                Console.WriteLine($"Non fatal error: {e}");
+            }
+
+            finally
             {
                 _consumer.Close();
             }
-        }, cancellationToken);
     }
 
-    public bool TryDequeueMessage(out string? message)
+    public Task<bool> TryDequeueMessage(out string? message)
     {
-        try
-        {
-            return _messageQueue.TryDequeue(out message);
-        }
-        catch (Exception ex)
-        {
-            throw new BadHttpRequestException(ex.Message);
-        }
+        throw new NotImplementedException();
     }
 
-    public IEnumerable<string> GetAllMessages()
+    public Task<IEnumerable<string>> GetAllMessages()
     {
-        try
-        {
-            return _messageQueue.ToArray()!;
-        }
-        catch (Exception ex)
-        {
-            throw new BadHttpRequestException(ex.Message);
-        }
+        throw new NotImplementedException();
     }
 }

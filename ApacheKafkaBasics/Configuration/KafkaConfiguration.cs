@@ -43,6 +43,6 @@ public static class KafkaConfiguration
         // Start Kafka consumer in a background task
         var kafkaConsumerService = services.GetRequiredService<KafkaConsumerService>();
         var cancellationTokenSource = new CancellationTokenSource();
-        Task.Run(() => kafkaConsumerService.Consume(cancellationTokenSource.Token), cancellationTokenSource.Token);
+        Task.Run(() => kafkaConsumerService.StartCartConsumer(cancellationTokenSource.Token), cancellationTokenSource.Token);
     }
 }
