@@ -14,22 +14,29 @@ public class KafkaCartProcessController(
     IShoppingCartRepository shoppingCartRepository)
     : Controller
 {
-    [HttpPost]
-    public async Task<IActionResult> Post()
+    [HttpPost("StartProducer")]
+    public async Task<IActionResult> StartProducer()
     {
         var cartItems = await shoppingCartRepository.GetCartItems();
-        
+
         if (cartItems.Count <= 0) return BadRequest("no item on the cart to send to kafka producer");
-        
-        const string topicName = "in-cart-items";
 
         await kafkaProducerService.CreateKafkaCartTopic(cartItems);
-        return Ok("Message sent to Kafka");
 
+        return Ok("Message sent from producer to consumer to be processed");
     }
 
-    [HttpGet]
-    public IActionResult Get()
+    [HttpPost("StartConsumer")]
+    public async Task<IActionResult> StartConsumer()
+    {
+        // Start Kafka consumer in a background task
+        var cancellationTokenSource = new CancellationTokenSource();
+        await Task.Run(() => kafkaConsumerService.StartCartConsumer(cancellationTokenSource.Token), cancellationTokenSource.Token);
+        return Ok("Consumer is started to process messages");
+    }
+
+    [HttpGet("GetAllQueueMessages")]
+    public IActionResult GetAllQueueMessages()
     {
         var messages = kafkaConsumerService.GetAllMessages();
         return Ok(messages);
@@ -39,9 +46,9 @@ public class KafkaCartProcessController(
     public IActionResult Accept()
     {
         //if (kafkaConsumerService.TryDequeueMessage(out var message))
-            // Logic for accepting the message
-            // E.g., save to database or mark as processed
-            //return Ok($"Accepted message: {message}");
+        // Logic for accepting the message
+        // E.g., save to database or mark as processed
+        //return Ok($"Accepted message: {message}");
 
         return NotFound("No messages to accept");
     }
@@ -50,9 +57,9 @@ public class KafkaCartProcessController(
     public IActionResult Reject()
     {
         //if (kafkaConsumerService.TryDequeueMessage(out var message))
-            // Logic for rejecting the message
-            // E.g., log the rejection or send to a dead-letter queue
-            //return Ok($"Rejected message: {message}");
+        // Logic for rejecting the message
+        // E.g., log the rejection or send to a dead-letter queue
+        //return Ok($"Rejected message: {message}");
 
         return NotFound("No messages to reject");
     }

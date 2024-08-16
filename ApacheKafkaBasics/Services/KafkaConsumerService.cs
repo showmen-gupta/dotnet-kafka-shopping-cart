@@ -12,7 +12,7 @@ public class KafkaConsumerService : IKafkaConsumerService
     private readonly IConsumer<string, CartItem> _consumer;
     private readonly ConsumerConfig _consumerConfig;
 
-    private record KafkaMessage(string Key, int Partition, CartItem Message);
+    private record KafkaMessage(string? Key, int? Partition, CartItem Message);
 
     public KafkaConsumerService(string brokerList, string groupId, string topic)
     {
@@ -43,9 +43,11 @@ public class KafkaConsumerService : IKafkaConsumerService
     public Task StartCartConsumer(CancellationToken cancellationToken)
     {
         var cartItemMessages = new Queue<KafkaMessage>();
-        if (cartItemMessages == null) throw new ArgumentNullException(nameof(cartItemMessages));
+        
+        if (cartItemMessages == null) throw new BadHttpRequestException("There are no values on the queue");
 
         Console.WriteLine("Consumer loop started...\n");
+        
         while (true)
             try
             {
@@ -54,12 +56,14 @@ public class KafkaConsumerService : IKafkaConsumerService
                         TimeSpan.FromMilliseconds(_consumerConfig.MaxPollIntervalMs - 1000 ?? 250000));
                 var cartRequest = result?.Message?.Value;
                 if (cartRequest == null) continue;
-                
+
+                var key = result?.Message?.Key;
+                var partition = result?.Partition.Value;
 
                 // Adding message to a list just for the demo.
                 // You should persist the message in database and process it later.
-                cartItemMessages.Enqueue(new KafkaMessage(result.Message.Key,
-                    result.Partition.Value, result.Message.Value));
+                cartItemMessages.Enqueue(new KafkaMessage(key,
+                    partition, cartRequest));
 
                 _consumer.Commit(result);
                 _consumer.StoreOffset(result);

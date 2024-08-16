@@ -10,6 +10,6 @@ var app = builder.Build();
 KafkaConfiguration.ConfigureMiddleware(app);
 
 // Start Kafka consumer service
-KafkaConfiguration.StartKafkaConsumer(app.Services);
+//KafkaConfiguration.StartKafkaConsumer(app.Services);
 
 app.Run();
