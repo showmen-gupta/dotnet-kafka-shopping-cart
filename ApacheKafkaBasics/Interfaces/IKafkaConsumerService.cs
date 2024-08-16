@@ -2,7 +2,7 @@ namespace ApacheKafkaBasics.Interfaces;
 
 public interface IKafkaConsumerService
 {
-    public Task StartCartConsumer(CancellationToken cancellationToken);
+    public void StartCartConsumer(CancellationToken cancellationToken);
     public Task<bool> TryDequeueMessage(out string? message);
     public Task<IEnumerable<string>> GetAllMessages();
 

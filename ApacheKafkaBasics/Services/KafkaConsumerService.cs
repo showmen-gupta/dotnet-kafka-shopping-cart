@@ -4,6 +4,7 @@ using Confluent.Kafka.SyncOverAsync;
 using Confluent.SchemaRegistry;
 using Confluent.SchemaRegistry.Serdes;
 using Generated.Entity;
+using Microsoft.AspNetCore.Connections;
 
 namespace ApacheKafkaBasics.Services;
 
@@ -11,7 +12,6 @@ public class KafkaConsumerService : IKafkaConsumerService
 {
     private readonly IConsumer<string, CartItem> _consumer;
     private readonly ConsumerConfig _consumerConfig;
-    private readonly Queue<KafkaMessage> _cartItemMessages = new();
 
     private record KafkaMessage(string? Key, int? Partition, CartItem Message);
 
@@ -25,7 +25,7 @@ public class KafkaConsumerService : IKafkaConsumerService
             GroupId = groupId,
             EnableAutoCommit = false,
             EnableAutoOffsetStore = false,
-            SessionTimeoutMs = 5000, // 5 seconds
+            SessionTimeoutMs = 10000, // 10 seconds
             // Read messages from start if no commit exists.
             AutoOffsetReset = AutoOffsetReset.Earliest,
             MaxPollIntervalMs = 500000
@@ -41,37 +41,36 @@ public class KafkaConsumerService : IKafkaConsumerService
         _consumer.Subscribe(topic);
     }
 
-
-    public Task StartCartConsumer(CancellationToken cancellationToken)
+    public void StartCartConsumer(CancellationToken cancellationToken)
     {
-        Console.WriteLine("Consumer loop started...\n");
-
-        while (true)
+        Task.Run(() =>
+        {
             try
             {
-                var result =
-                    _consumer.Consume(
-                        TimeSpan.FromMilliseconds(_consumerConfig.MaxPollIntervalMs - 1000 ?? 250000));
-                var cartRequest = result?.Message?.Value;
-                if (cartRequest == null) continue;
+                var cartItemMessages = new Queue<KafkaMessage>();
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    Console.WriteLine("Consumer loop started...\n");
+                    var result =
+                        _consumer.Consume(cancellationToken);
+                    var cartRequest = result?.Message?.Value;
+                    if (cartRequest == null) continue;
 
-                var key = result?.Message?.Key;
-                var partition = result?.Partition.Value;
+                    var key = result?.Message?.Key;
+                    var partition = result?.Partition.Value;
 
-                _cartItemMessages.Enqueue(new KafkaMessage(key, partition, cartRequest));
-
-                _consumer.Commit(result);
-                _consumer.StoreOffset(result);
+                    cartItemMessages.Enqueue(new KafkaMessage(key, partition, cartRequest));
+                    Console.WriteLine(cartItemMessages.Count);
+                    _consumer.Commit(result);
+                    _consumer.StoreOffset(result);
+                }
             }
-            catch (ConsumeException e) when (!e.Error.IsFatal)
-            {
-                Console.WriteLine($"Non fatal error: {e}");
-            }
-
-            finally
+            catch (Exception ex)
             {
                 _consumer.Close();
+                throw new ConnectionAbortedException(ex.Message);
             }
+        }, cancellationToken);
     }
 
 
