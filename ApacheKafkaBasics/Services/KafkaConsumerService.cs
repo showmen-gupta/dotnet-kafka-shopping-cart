@@ -11,6 +11,7 @@ public class KafkaConsumerService : IKafkaConsumerService
 {
     private readonly IConsumer<string, CartItem> _consumer;
     private readonly ConsumerConfig _consumerConfig;
+    private readonly Queue<KafkaMessage> _cartItemMessages = new();
 
     private record KafkaMessage(string? Key, int? Partition, CartItem Message);
 
@@ -24,10 +25,10 @@ public class KafkaConsumerService : IKafkaConsumerService
             GroupId = groupId,
             EnableAutoCommit = false,
             EnableAutoOffsetStore = false,
-            SessionTimeoutMs = 10000, // 10 seconds
+            SessionTimeoutMs = 5000, // 5 seconds
             // Read messages from start if no commit exists.
             AutoOffsetReset = AutoOffsetReset.Earliest,
-            MaxPollIntervalMs = 300000
+            MaxPollIntervalMs = 500000
         };
         var schemaRegistryClient = new CachedSchemaRegistryClient(schemaRegistryConfig);
 
@@ -43,39 +44,34 @@ public class KafkaConsumerService : IKafkaConsumerService
 
     public Task StartCartConsumer(CancellationToken cancellationToken)
     {
-        var cartItemMessages = new Queue<KafkaMessage>();
-
-        if (cartItemMessages == null) throw new BadHttpRequestException("There are no values on the queue");
-
         Console.WriteLine("Consumer loop started...\n");
 
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
+        while (true)
+            try
             {
-                var result = _consumer.Consume(cancellationToken);
+                var result =
+                    _consumer.Consume(
+                        TimeSpan.FromMilliseconds(_consumerConfig.MaxPollIntervalMs - 1000 ?? 250000));
                 var cartRequest = result?.Message?.Value;
                 if (cartRequest == null) continue;
 
                 var key = result?.Message?.Key;
                 var partition = result?.Partition.Value;
 
-                cartItemMessages.Enqueue(new KafkaMessage(key, partition, cartRequest));
+                _cartItemMessages.Enqueue(new KafkaMessage(key, partition, cartRequest));
 
                 _consumer.Commit(result);
                 _consumer.StoreOffset(result);
             }
-        }
-        catch (ConsumeException e) when (!e.Error.IsFatal)
-        {
-            Console.WriteLine($"Non fatal error: {e}");
-        }
-        finally
-        {
-            _consumer.Close();
-        }
+            catch (ConsumeException e) when (!e.Error.IsFatal)
+            {
+                Console.WriteLine($"Non fatal error: {e}");
+            }
 
-        return Task.CompletedTask;
+            finally
+            {
+                _consumer.Close();
+            }
     }
 
 

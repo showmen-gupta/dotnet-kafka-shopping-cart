@@ -31,7 +31,7 @@ public class KafkaCartProcessController(
     {
         // Start Kafka consumer in a background task
         var cancellationTokenSource = new CancellationTokenSource();
-        await kafkaConsumerService.StartCartConsumer(cancellationTokenSource.Token);
+        await Task.Run(() => kafkaConsumerService.StartCartConsumer(cancellationTokenSource.Token), cancellationTokenSource.Token);
         return Ok("Consumer is started to process messages");
     }
 
