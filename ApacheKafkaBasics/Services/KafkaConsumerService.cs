@@ -41,9 +41,9 @@ public class KafkaConsumerService : IKafkaConsumerService
         _consumer.Subscribe(topic);
     }
 
-    public void StartCartConsumer(CancellationToken cancellationToken)
+    public async Task StartCartConsumer(CancellationToken cancellationToken)
     {
-        Task.Run(() =>
+        await Task.Run(() =>
         {
             try
             {
@@ -80,6 +80,11 @@ public class KafkaConsumerService : IKafkaConsumerService
     }
 
     public Task<IEnumerable<string>> GetAllMessages()
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task SendMessageToResultTopicAsync(CartItem cartItemRequest, bool isApproved, int partitionId)
     {
         throw new NotImplementedException();
     }
