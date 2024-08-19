@@ -58,7 +58,7 @@ public class KafkaConsumerService : IKafkaConsumerService
             .SetKeySerializer(new AvroSerializer<string>(cachedSchemaRegistryClient))
             .SetValueSerializer(new AvroSerializer<CartItemProcessed>(cachedSchemaRegistryClient))
             .Build();
-        
+
         _topicName = topic;
     }
 
@@ -94,7 +94,7 @@ public class KafkaConsumerService : IKafkaConsumerService
         }, cancellationToken);
     }
 
-    public async Task StartCartItemProcessor(bool isApproved, CancellationTokenSource cancellationToken)
+    public async Task StartCartItemProcessor(int productId, bool isApproved, CancellationTokenSource cancellationToken)
     {
         try
         {
@@ -107,6 +107,10 @@ public class KafkaConsumerService : IKafkaConsumerService
                 }
 
                 var (key, partition, cartItem) = _cartItemMessages.Dequeue();
+
+                if (cartItem.Product.ProductId != productId)
+                    throw new BadHttpRequestException("Product not found on the queue");
+                
                 Console.WriteLine(
                     $"Received message: {key} from partition: {partition} Value: {JsonSerializer.Serialize(cartItem)}");
 
