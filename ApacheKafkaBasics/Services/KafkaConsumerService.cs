@@ -105,15 +105,14 @@ public class KafkaConsumerService : IKafkaConsumerService
                     Thread.Sleep(TimeSpan.FromSeconds(1));
                     continue;
                 }
-                
+
+                //TODO: need to dequeue the message from the queue too.
                 // Loop through the queue to find the specific product
-                var targetMessage = _cartItemMessages.FirstOrDefault(message => message.Message.Product.ProductId == productId);
+                var targetMessage =
+                    _cartItemMessages.FirstOrDefault(message => message.Message.Product.ProductId == productId);
 
 
-                if (targetMessage == null)
-                {
-                    throw new BadHttpRequestException("Product not found in the queue");
-                }
+                if (targetMessage == null) throw new BadHttpRequestException("Product not found in the queue");
 
                 // Now remove the target message from the queue
                 _cartItemMessages = new Queue<KafkaMessage>(_cartItemMessages.Where(m => m != targetMessage));
