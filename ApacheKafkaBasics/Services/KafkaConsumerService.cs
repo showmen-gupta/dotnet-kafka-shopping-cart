@@ -105,17 +105,26 @@ public class KafkaConsumerService : IKafkaConsumerService
                     Thread.Sleep(TimeSpan.FromSeconds(1));
                     continue;
                 }
-
-                var (key, partition, cartItem) = _cartItemMessages.Dequeue();
-
-                if (cartItem.Product.ProductId != productId)
-                    throw new BadHttpRequestException("Product not found on the queue");
                 
+                // Loop through the queue to find the specific product
+                var targetMessage = _cartItemMessages.FirstOrDefault(message => message.Message.Product.ProductId == productId);
+
+
+                if (targetMessage == null)
+                {
+                    throw new BadHttpRequestException("Product not found in the queue");
+                }
+
+                // Now remove the target message from the queue
+                _cartItemMessages = new Queue<KafkaMessage>(_cartItemMessages.Where(m => m != targetMessage));
+
+                // Process the message
+                var (key, partition, cartItem) = targetMessage;
+
                 Console.WriteLine(
                     $"Received message: {key} from partition: {partition} Value: {JsonSerializer.Serialize(cartItem)}");
 
                 // Make decision on queued cart items.
-
                 await SendCartItemsToProcess(cartItem, isApproved, partition);
             }
         }
