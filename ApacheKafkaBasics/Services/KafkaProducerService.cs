@@ -74,7 +74,7 @@ public class KafkaProducerService : IKafkaProducerService
                     });
 
                 Console.WriteLine(
-                    $"\nMsg: Your leave request is queued at offset {result.Offset.Value} in the Topic {result.Topic}");
+                    $"\nMsg: Your cart request is queued at offset {result.Offset.Value} in the Topic {result.Topic}");
             }
         }
         catch (CreateTopicsException e)

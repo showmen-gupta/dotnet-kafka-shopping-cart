@@ -1,0 +1,44 @@
+{
+  "type": "record",
+  "name": "CartItemProcessed",
+  "namespace": "Generated.Entity",
+  "fields": [
+    {
+      "name": "Product",
+      "type": {
+        "type": "record",
+        "name": "Product",
+        "fields": [
+          {
+            "name": "ProductId",
+            "type": "int"
+          },
+          {
+            "name": "Name",
+            "type": "string"
+          },
+          {
+            "name": "Price",
+            "type": "double"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Quantity",
+      "type": "int"
+    },
+    {
+      "name": "TotalPrice",
+      "type": "double"
+    },
+    {
+      "name": "ProcessedBy",
+      "type": "string"
+    },
+    {
+      "name": "Result",
+      "type": "string"
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.Json;
 using ApacheKafkaBasics.Interfaces;
 using Confluent.Kafka;
 using Confluent.Kafka.SyncOverAsync;
@@ -11,7 +13,9 @@ namespace ApacheKafkaBasics.Services;
 public class KafkaConsumerService : IKafkaConsumerService
 {
     private readonly IConsumer<string, CartItem> _consumer;
-    private readonly ConsumerConfig _consumerConfig;
+    private readonly IProducer<string, CartItemProcessed> _producer;
+    private readonly string _topicName;
+    private static Queue<KafkaMessage> _cartItemMessages = new();
 
     private record KafkaMessage(string? Key, int? Partition, CartItem Message);
 
@@ -19,7 +23,7 @@ public class KafkaConsumerService : IKafkaConsumerService
     {
         var schemaRegistryConfig = new SchemaRegistryConfig { Url = "http://127.0.0.1:8081" };
 
-        _consumerConfig = new ConsumerConfig
+        var consumerConfig = new ConsumerConfig
         {
             BootstrapServers = brokerList,
             GroupId = groupId,
@@ -31,14 +35,30 @@ public class KafkaConsumerService : IKafkaConsumerService
             MaxPollIntervalMs = 500000
         };
         var schemaRegistryClient = new CachedSchemaRegistryClient(schemaRegistryConfig);
+        var cachedSchemaRegistryClient = new CachedSchemaRegistryClient(schemaRegistryConfig);
 
-        _consumer = new ConsumerBuilder<string, CartItem>(_consumerConfig)
+
+        _consumer = new ConsumerBuilder<string, CartItem>(consumerConfig)
             .SetKeyDeserializer(new AvroDeserializer<string>(schemaRegistryClient).AsSyncOverAsync())
             .SetValueDeserializer(new AvroDeserializer<CartItem>(schemaRegistryClient).AsSyncOverAsync())
             .SetErrorHandler((_, e) => Console.WriteLine($"Error: {e.Reason}"))
             .Build();
 
         _consumer.Subscribe(topic);
+
+        var producerConfig = new ProducerConfig
+        {
+            BootstrapServers = brokerList,
+            // Guarantees delivery of message to topic.
+            EnableDeliveryReports = true,
+            ClientId = Dns.GetHostName()
+        };
+
+        _producer = new ProducerBuilder<string, CartItemProcessed>(producerConfig)
+            .SetKeySerializer(new AvroSerializer<string>(cachedSchemaRegistryClient))
+            .SetValueSerializer(new AvroSerializer<CartItemProcessed>(cachedSchemaRegistryClient))
+            .Build();
+        _topicName = topic;
     }
 
     public async Task StartCartConsumer(CancellationToken cancellationToken)
@@ -47,7 +67,7 @@ public class KafkaConsumerService : IKafkaConsumerService
         {
             try
             {
-                var cartItemMessages = new Queue<KafkaMessage>();
+                _cartItemMessages = new Queue<KafkaMessage>();
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     Console.WriteLine("Consumer loop started...\n");
@@ -59,8 +79,8 @@ public class KafkaConsumerService : IKafkaConsumerService
                     var key = result?.Message?.Key;
                     var partition = result?.Partition.Value;
 
-                    cartItemMessages.Enqueue(new KafkaMessage(key, partition, cartRequest));
-                    Console.WriteLine(cartItemMessages.Count);
+                    _cartItemMessages.Enqueue(new KafkaMessage(key, partition, cartRequest));
+                    Console.WriteLine(_cartItemMessages.Count);
                     _consumer.Commit(result);
                     _consumer.StoreOffset(result);
                 }
@@ -73,18 +93,65 @@ public class KafkaConsumerService : IKafkaConsumerService
         }, cancellationToken);
     }
 
-
-    public Task<bool> TryDequeueMessage(out string? message)
+    public async Task StartCartItemProcessor(bool isApproved, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (_cartItemMessages.Count == 0)
+                {
+                    Thread.Sleep(TimeSpan.FromSeconds(1));
+                    continue;
+                }
+
+                var (key, partition, cartItem) = _cartItemMessages.Dequeue();
+                Console.WriteLine(
+                    $"Received message: {key} from partition: {partition} Value: {JsonSerializer.Serialize(cartItem)}");
+
+                // Make decision on queued cart items.
+
+                await SendCartItemsToProcess(cartItem, isApproved, partition);
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new BadHttpRequestException(ex.Message);
+        }
+    }
+
+    public async Task SendCartItemsToProcess(CartItem cartItemRequest, bool isApproved, int? partitionId)
+    {
+        try
+        {
+            var cartItemResult = new CartItemProcessed
+            {
+                Product = cartItemRequest.Product,
+                Quantity = cartItemRequest.Quantity,
+                TotalPrice = cartItemRequest.TotalPrice,
+                ProcessedBy = $"Admin #{partitionId}",
+                Result = isApproved
+                    ? "Approved: Your cart item has been approved to deliver."
+                    : "Declined: Your cart item has been declined to be processed."
+            };
+
+            var result = await _producer.ProduceAsync(_topicName,
+                new Message<string, CartItemProcessed>
+                {
+                    Key = $"{cartItemRequest.Product.Name}-{DateTime.UtcNow.Ticks}",
+                    Value = cartItemResult
+                });
+
+            Console.WriteLine(
+                $"\nMsg: Your cart request is queued at offset {result.Offset.Value} in the Topic {result.Topic}");
+        }
+        catch (Exception ex)
+        {
+            throw new BadHttpRequestException(ex.Message);
+        }
     }
 
     public Task<IEnumerable<string>> GetAllMessages()
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task SendMessageToResultTopicAsync(CartItem cartItemRequest, bool isApproved, int partitionId)
     {
         throw new NotImplementedException();
     }
