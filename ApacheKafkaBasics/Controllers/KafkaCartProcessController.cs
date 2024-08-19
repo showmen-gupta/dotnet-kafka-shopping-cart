@@ -31,36 +31,24 @@ public class KafkaCartProcessController(
     {
         // Start Kafka consumer in a background task
         var cancellationTokenSource = new CancellationTokenSource();
-        await Task.Run(() => kafkaConsumerService.StartCartConsumer(cancellationTokenSource.Token), cancellationTokenSource.Token);
+        await Task.Run(() => kafkaConsumerService.StartCartConsumer(cancellationTokenSource.Token),
+            cancellationTokenSource.Token);
+        return Ok("Consumer has started to process messages");
+    }
+
+    [HttpPost("StartCartItemProcessor")]
+    public async Task<IActionResult> StartCartItemProcessor(bool isApproved)
+    {
+        // Start Kafka consumer in a background task
+        var cancellationTokenSource = new CancellationTokenSource();
+        await kafkaConsumerService.StartCartItemProcessor(isApproved, cancellationTokenSource);
         return Ok("Consumer has started to process messages");
     }
 
     [HttpGet("GetAllQueueMessages")]
     public IActionResult GetAllQueueMessages()
     {
-        var messages = kafkaConsumerService.GetAllMessages();
+        var messages = kafkaConsumerService.GetAllProcessedMessages();
         return Ok(messages);
-    }
-
-    [HttpPost("accept")]
-    public IActionResult Accept()
-    {
-        //if (kafkaConsumerService.TryDequeueMessage(out var message))
-        // Logic for accepting the message
-        // E.g., save to database or mark as processed
-        //return Ok($"Accepted message: {message}");
-
-        return NotFound("No messages to accept");
-    }
-
-    [HttpPost("reject")]
-    public IActionResult Reject()
-    {
-        //if (kafkaConsumerService.TryDequeueMessage(out var message))
-        // Logic for rejecting the message
-        // E.g., log the rejection or send to a dead-letter queue
-        //return Ok($"Rejected message: {message}");
-
-        return NotFound("No messages to reject");
     }
 }

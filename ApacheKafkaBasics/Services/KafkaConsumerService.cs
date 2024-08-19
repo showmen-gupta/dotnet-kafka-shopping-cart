@@ -58,6 +58,7 @@ public class KafkaConsumerService : IKafkaConsumerService
             .SetKeySerializer(new AvroSerializer<string>(cachedSchemaRegistryClient))
             .SetValueSerializer(new AvroSerializer<CartItemProcessed>(cachedSchemaRegistryClient))
             .Build();
+        
         _topicName = topic;
     }
 
@@ -93,7 +94,7 @@ public class KafkaConsumerService : IKafkaConsumerService
         }, cancellationToken);
     }
 
-    public async Task StartCartItemProcessor(bool isApproved, CancellationToken cancellationToken)
+    public async Task StartCartItemProcessor(bool isApproved, CancellationTokenSource cancellationToken)
     {
         try
         {
@@ -151,7 +152,7 @@ public class KafkaConsumerService : IKafkaConsumerService
         }
     }
 
-    public Task<IEnumerable<string>> GetAllMessages()
+    public Task<IEnumerable<string>> GetAllProcessedMessages()
     {
         throw new NotImplementedException();
     }
