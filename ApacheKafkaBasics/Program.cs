@@ -9,7 +9,4 @@ var app = builder.Build();
 // Configure the HTTP request pipeline
 KafkaConfiguration.ConfigureMiddleware(app);
 
-// Start Kafka consumer service
-KafkaConfiguration.StartKafkaConsumer(app.Services);
-
 app.Run();

@@ -38,11 +38,11 @@ public static class KafkaConfiguration
         application.MapControllers();
     }
 
-    public static void StartKafkaConsumer(IServiceProvider services)
+    public static void InitiateKafkaConsumer(KafkaConsumerService kafkaConsumerService,
+        CancellationTokenSource? cancellationTokenSource)
     {
-        // Start Kafka consumer in a background task
-        var kafkaConsumerService = services.GetRequiredService<KafkaConsumerService>();
-        var cancellationTokenSource = new CancellationTokenSource();
-        Task.Run(() => kafkaConsumerService.StartCartConsumer(cancellationTokenSource.Token), cancellationTokenSource.Token);
+        if (cancellationTokenSource != null)
+            Task.Run(() => kafkaConsumerService.StartCartConsumer(cancellationTokenSource.Token),
+                cancellationTokenSource.Token);
     }
 }

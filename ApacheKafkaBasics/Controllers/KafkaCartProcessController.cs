@@ -1,5 +1,6 @@
 // KafkaCartProcessController.cs
 
+using ApacheKafkaBasics.Configuration;
 using ApacheKafkaBasics.Interfaces;
 using ApacheKafkaBasics.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +14,10 @@ public class KafkaCartProcessController(
     KafkaConsumerService kafkaConsumerService,
     IShoppingCartRepository shoppingCartRepository)
     : Controller
+
 {
+    private static CancellationTokenSource? _cancellationTokenSource;
+
     [HttpPost("StartProducer")]
     public async Task<IActionResult> StartProducer()
     {
@@ -27,12 +31,10 @@ public class KafkaCartProcessController(
     }
 
     [HttpPost("StartConsumer")]
-    public async Task<IActionResult> StartConsumer()
+    public IActionResult StartConsumer()
     {
-        // Start Kafka consumer in a background task
-        var cancellationTokenSource = new CancellationTokenSource();
-        await Task.Run(() => kafkaConsumerService.StartCartConsumer(cancellationTokenSource.Token),
-            cancellationTokenSource.Token);
+        _cancellationTokenSource = new CancellationTokenSource();
+        KafkaConfiguration.InitiateKafkaConsumer(kafkaConsumerService, _cancellationTokenSource);
         return Ok("Consumer has started to process messages");
     }
 

@@ -6,7 +6,6 @@ using Confluent.Kafka.SyncOverAsync;
 using Confluent.SchemaRegistry;
 using Confluent.SchemaRegistry.Serdes;
 using Generated.Entity;
-using Microsoft.AspNetCore.Connections;
 
 namespace ApacheKafkaBasics.Services;
 
@@ -16,6 +15,7 @@ public class KafkaConsumerService : IKafkaConsumerService
     private readonly IProducer<string, CartItemProcessed> _producer;
     private readonly string _topicName;
     private static Queue<KafkaMessage> _cartItemMessages = new();
+    private readonly ConsumerConfig _consumerConfig;
 
     private record KafkaMessage(string? Key, int? Partition, CartItem Message);
 
@@ -23,7 +23,7 @@ public class KafkaConsumerService : IKafkaConsumerService
     {
         var schemaRegistryConfig = new SchemaRegistryConfig { Url = "http://127.0.0.1:8081" };
 
-        var consumerConfig = new ConsumerConfig
+        _consumerConfig = new ConsumerConfig
         {
             BootstrapServers = brokerList,
             GroupId = groupId,
@@ -38,13 +38,12 @@ public class KafkaConsumerService : IKafkaConsumerService
         var cachedSchemaRegistryClient = new CachedSchemaRegistryClient(schemaRegistryConfig);
 
 
-        _consumer = new ConsumerBuilder<string, CartItem>(consumerConfig)
+        _consumer = new ConsumerBuilder<string, CartItem>(_consumerConfig)
             .SetKeyDeserializer(new AvroDeserializer<string>(schemaRegistryClient).AsSyncOverAsync())
             .SetValueDeserializer(new AvroDeserializer<CartItem>(schemaRegistryClient).AsSyncOverAsync())
             .SetErrorHandler((_, e) => Console.WriteLine($"Error: {e.Reason}"))
             .Build();
 
-        _consumer.Subscribe(topic);
 
         var producerConfig = new ProducerConfig
         {
@@ -62,36 +61,39 @@ public class KafkaConsumerService : IKafkaConsumerService
         _topicName = topic;
     }
 
-    public async Task StartCartConsumer(CancellationToken cancellationToken)
+    public void StartCartConsumer(CancellationToken cancellationToken)
     {
-        await Task.Run(() =>
+        try
         {
-            try
-            {
-                _cartItemMessages = new Queue<KafkaMessage>();
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    Console.WriteLine("Consumer loop started...\n");
-                    var result =
-                        _consumer.Consume(cancellationToken);
-                    var cartRequest = result?.Message?.Value;
-                    if (cartRequest == null) continue;
+            _consumer.Subscribe(_topicName);
+            _cartItemMessages = new Queue<KafkaMessage>();
 
-                    var key = result?.Message?.Key;
-                    var partition = result?.Partition.Value;
-
-                    _cartItemMessages.Enqueue(new KafkaMessage(key, partition, cartRequest));
-                    Console.WriteLine(_cartItemMessages.Count);
-                    _consumer.Commit(result);
-                    _consumer.StoreOffset(result);
-                }
-            }
-            catch (Exception ex)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                _consumer.Close();
-                throw new ConnectionAbortedException(ex.Message);
+                Console.WriteLine("Consumer loop started...\n");
+                var result =
+                    _consumer.Consume(TimeSpan.FromMilliseconds(_consumerConfig.MaxPollIntervalMs - 1000 ?? 250000));
+
+                if (result?.Message?.Value == null) continue;
+                var cartRequest = result.Message.Value;
+                var key = result.Message.Key;
+                var partition = result.Partition.Value;
+
+                _cartItemMessages.Enqueue(new KafkaMessage(key, partition, cartRequest));
+                Console.WriteLine(_cartItemMessages.Count);
+                _consumer.Commit(result);
+                _consumer.StoreOffset(result);
             }
-        }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Consumer exception: {ex.Message}");
+            throw; // Let the exception bubble up after logging it
+        }
+        finally
+        {
+            _consumer?.Close(); // Ensure consumer is closed cleanly
+        }
     }
 
     public async Task StartCartItemProcessor(int productId, bool isApproved, CancellationTokenSource cancellationToken)
