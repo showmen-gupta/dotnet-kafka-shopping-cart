@@ -44,7 +44,7 @@ public class KafkaConsumerService : IKafkaConsumerService
             .SetErrorHandler((_, e) => Console.WriteLine($"Error: {e.Reason}"))
             .Build();
 
-
+        
         var producerConfig = new ProducerConfig
         {
             BootstrapServers = brokerList,
@@ -59,15 +59,14 @@ public class KafkaConsumerService : IKafkaConsumerService
             .Build();
 
         _topicName = topic;
+        _consumer.Subscribe(_topicName);
+        _cartItemMessages = new Queue<KafkaMessage>();
     }
 
     public void StartCartConsumer(CancellationToken cancellationToken)
     {
         try
         {
-            _consumer.Subscribe(_topicName);
-            _cartItemMessages = new Queue<KafkaMessage>();
-
             while (!cancellationToken.IsCancellationRequested)
             {
                 Console.WriteLine("Consumer loop started...\n");
@@ -153,7 +152,7 @@ public class KafkaConsumerService : IKafkaConsumerService
             var result = await _producer.ProduceAsync(_topicName,
                 new Message<string, CartItemProcessed>
                 {
-                    Key = $"{cartItemRequest.Product.Name}-{DateTime.UtcNow.Ticks}",
+                    Key = $"{cartItemResult.Product.Name}-{DateTime.UtcNow.Ticks}",
                     Value = cartItemResult
                 });
 
