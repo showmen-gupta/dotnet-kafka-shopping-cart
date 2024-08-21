@@ -5,7 +5,7 @@ namespace ApacheKafkaBasics.Interfaces;
 public interface IKafkaConsumerService
 {
     public void StartCartConsumer(CancellationToken cancellationToken);
-    public Task StartCartItemProcessor(int productId, bool isApproved, CancellationTokenSource cancellationToken);
+    public Task StartCartItemProcessor(CancellationToken cancellationToken);
 
     public Task SendCartItemsToProcess(CartItem cartItemRequest, bool isApproved,
         int? partitionId);

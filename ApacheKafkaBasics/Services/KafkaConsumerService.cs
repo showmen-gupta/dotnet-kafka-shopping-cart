@@ -44,7 +44,7 @@ public class KafkaConsumerService : IKafkaConsumerService
             .SetErrorHandler((_, e) => Console.WriteLine($"Error: {e.Reason}"))
             .Build();
 
-        
+
         var producerConfig = new ProducerConfig
         {
             BootstrapServers = brokerList,
@@ -95,7 +95,7 @@ public class KafkaConsumerService : IKafkaConsumerService
         }
     }
 
-    public async Task StartCartItemProcessor(int productId, bool isApproved, CancellationTokenSource cancellationToken)
+    public async Task StartCartItemProcessor(CancellationToken cancellationToken)
     {
         try
         {
@@ -107,25 +107,22 @@ public class KafkaConsumerService : IKafkaConsumerService
                     continue;
                 }
 
-                //TODO: need to dequeue the message from the queue too.
-                // Loop through the queue to find the specific product
-                var targetMessage =
-                    _cartItemMessages.FirstOrDefault(message => message.Message.Product.ProductId == productId);
-
-
-                if (targetMessage == null) throw new BadHttpRequestException("Product not found in the queue");
-
-                // Now remove the target message from the queue
-                _cartItemMessages = new Queue<KafkaMessage>(_cartItemMessages.Where(m => m != targetMessage));
-
-                // Process the message
-                var (key, partition, cartItem) = targetMessage;
-
+                var (key, partition, cartItem) = _cartItemMessages.Dequeue();
                 Console.WriteLine(
                     $"Received message: {key} from partition: {partition} Value: {JsonSerializer.Serialize(cartItem)}");
 
+                // Make decision on leave request.
+                // Prompt the user to approve the request
+                Console.Write("Approve request? (Y/N): ");
+
+                // Read the input from the user
+                var input = Console.ReadLine();
+
+                // Check if the input equals "Y" (ignoring case)
+                var approved = input!.Equals("Y", StringComparison.OrdinalIgnoreCase);
+
                 // Make decision on queued cart items.
-                await SendCartItemsToProcess(cartItem, isApproved, partition);
+                await SendCartItemsToProcess(cartItem, approved, partition);
             }
         }
         catch (Exception ex)
@@ -138,6 +135,7 @@ public class KafkaConsumerService : IKafkaConsumerService
     {
         try
         {
+            const string cartItemProcessedTopic = "cart-item-processed";
             var cartItemResult = new CartItemProcessed
             {
                 Product = cartItemRequest.Product,
@@ -149,7 +147,7 @@ public class KafkaConsumerService : IKafkaConsumerService
                     : "Declined: Your cart item has been declined to be processed."
             };
 
-            var result = await _producer.ProduceAsync(_topicName,
+            var result = await _producer.ProduceAsync(cartItemProcessedTopic,
                 new Message<string, CartItemProcessed>
                 {
                     Key = $"{cartItemResult.Product.Name}-{DateTime.UtcNow.Ticks}",
