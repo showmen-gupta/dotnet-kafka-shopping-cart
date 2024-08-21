@@ -164,6 +164,8 @@ public class KafkaConsumerService : IKafkaConsumerService
         }
     }
 
+
+    
     public Task<IEnumerable<string>> GetAllProcessedMessages()
     {
         throw new NotImplementedException();

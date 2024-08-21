@@ -9,6 +9,5 @@ public interface IKafkaConsumerService
 
     public Task SendCartItemsToProcess(CartItem cartItemRequest, bool isApproved,
         int? partitionId);
-
     public Task<IEnumerable<string>> GetAllProcessedMessages();
 }

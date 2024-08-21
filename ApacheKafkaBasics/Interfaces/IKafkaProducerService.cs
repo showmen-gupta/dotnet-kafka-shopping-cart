@@ -5,4 +5,5 @@ namespace ApacheKafkaBasics.Interfaces;
 public interface IKafkaProducerService
 {
     public Task CreateKafkaCartTopic(List<CartItem> cartItems);
+    Task<IEnumerable<string>> GetAllQueuedMessages();
 }

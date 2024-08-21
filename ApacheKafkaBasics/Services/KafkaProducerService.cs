@@ -92,4 +92,8 @@ public class KafkaProducerService : IKafkaProducerService
             throw;
         }
     }
+    public Task<IEnumerable<string>> GetAllQueuedMessages()
+    {
+        throw new NotImplementedException();
+    }
 }
