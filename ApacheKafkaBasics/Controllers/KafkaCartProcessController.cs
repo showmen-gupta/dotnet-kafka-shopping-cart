@@ -37,9 +37,16 @@ public class KafkaCartProcessController(
         KafkaConfiguration.InitiateKafkaConsumer(kafkaConsumerService, _cancellationTokenSource);
         return Ok("Consumer has started to process messages");
     }
-    
-    [HttpGet("GetAllQueueMessages")]
-    public IActionResult GetAllQueueMessages()
+
+    [HttpGet("GetAllQueuedMessages")]
+    public IActionResult GetAllQueuedMessages()
+    {
+        var messages = kafkaProducerService.GetAllQueuedMessages();
+        return Ok(messages);
+    }
+
+    [HttpGet("GetAllProcessedMessages")]
+    public IActionResult GetAllProcessedMessages()
     {
         var messages = kafkaConsumerService.GetAllProcessedMessages();
         return Ok(messages);
