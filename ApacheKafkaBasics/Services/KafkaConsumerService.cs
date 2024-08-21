@@ -59,7 +59,6 @@ public class KafkaConsumerService : IKafkaConsumerService
             .Build();
 
         _topicName = topic;
-        _consumer.Subscribe(_topicName);
         _cartItemMessages = new Queue<KafkaMessage>();
     }
 
@@ -70,6 +69,8 @@ public class KafkaConsumerService : IKafkaConsumerService
             while (!cancellationToken.IsCancellationRequested)
             {
                 Console.WriteLine("Consumer loop started...\n");
+                _consumer.Subscribe(_topicName);
+
                 var result =
                     _consumer.Consume(TimeSpan.FromMilliseconds(_consumerConfig.MaxPollIntervalMs - 1000 ?? 250000));
 
