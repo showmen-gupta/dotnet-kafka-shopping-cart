@@ -22,9 +22,9 @@ public class KafkaConsumerService : IKafkaConsumerService
 
     private record KafkaMessage(string? Key, int? Partition, CartItem Message);
 
-    public KafkaConsumerService(string brokerList, string groupId, string topic)
+    public KafkaConsumerService(string brokerList, string groupId, string topic, string schemaRegistryUrl)
     {
-        var schemaRegistryConfig = new SchemaRegistryConfig { Url = "http://127.0.0.1:8081" };
+        var schemaRegistryConfig = new SchemaRegistryConfig { Url = schemaRegistryUrl };
 
         _consumerConfig = new ConsumerConfig
         {

@@ -4,6 +4,7 @@
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>aaab5baa-d8f8-4895-8bcd-d11eb6548fa1</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
@@ -16,6 +17,10 @@
 
     <ItemGroup>
       <None Remove="ApacheKafkaBasics.http" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Configuration\KafkaProducerSecrets.cs" />
     </ItemGroup>
 
 </Project>

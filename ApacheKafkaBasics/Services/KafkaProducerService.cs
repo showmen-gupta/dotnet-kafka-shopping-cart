@@ -16,13 +16,13 @@ public class KafkaProducerService : IKafkaProducerService
     private readonly List<Message<string, CartItem>> _queuedMessages;
     private readonly object _queueLock = new();
 
-    public KafkaProducerService(string brokerList, string kafkaTopic)
+    public KafkaProducerService(string brokerList, string kafkaTopic, string schemaRegistryUrl)
     {
         var adminConfig = new AdminClientConfig { BootstrapServers = brokerList };
-        var schemaRegistryConfig = new SchemaRegistryConfig { Url = "http://127.0.0.1:8081" };
+        var schemaRegistryConfig = new SchemaRegistryConfig { Url = schemaRegistryUrl };
         var producerConfig = new ProducerConfig
         {
-            BootstrapServers = "127.0.0.1:9092",
+            BootstrapServers = brokerList,
             // Guarantees delivery of message to topic.
             EnableDeliveryReports = true,
             ClientId = Dns.GetHostName()
