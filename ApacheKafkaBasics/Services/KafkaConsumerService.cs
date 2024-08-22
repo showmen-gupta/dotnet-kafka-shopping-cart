@@ -23,7 +23,8 @@ public class KafkaConsumerService : IKafkaConsumerService
 
     private record KafkaMessage(string? Key, int? Partition, CartItem Message);
 
-    public KafkaConsumerService(string brokerList, string groupId, string topic, string schemaRegistryUrl, string processedTopic)
+    public KafkaConsumerService(string brokerList, string groupId, string topic, string schemaRegistryUrl,
+        string processedTopic)
     {
         var schemaRegistryConfig = new SchemaRegistryConfig { Url = schemaRegistryUrl };
 
@@ -173,7 +174,6 @@ public class KafkaConsumerService : IKafkaConsumerService
             throw new BadHttpRequestException(ex.Message);
         }
     }
-
 
     public Task<IEnumerable<string>> GetAllProcessedMessages()
     {
