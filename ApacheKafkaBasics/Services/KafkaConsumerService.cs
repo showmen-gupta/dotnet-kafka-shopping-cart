@@ -14,6 +14,7 @@ public class KafkaConsumerService : IKafkaConsumerService
     private readonly IConsumer<string, CartItem> _consumer;
     private readonly IProducer<string, CartItemProcessed> _producer;
     private readonly string _topicName;
+    private readonly string _processedTopicName;
     private static Queue<KafkaMessage> _cartItemMessages = new();
     private readonly ConsumerConfig _consumerConfig;
     private readonly List<Message<string, CartItemProcessed>> _processedMessages;
@@ -22,7 +23,7 @@ public class KafkaConsumerService : IKafkaConsumerService
 
     private record KafkaMessage(string? Key, int? Partition, CartItem Message);
 
-    public KafkaConsumerService(string brokerList, string groupId, string topic, string schemaRegistryUrl)
+    public KafkaConsumerService(string brokerList, string groupId, string topic, string schemaRegistryUrl, string processedTopic)
     {
         var schemaRegistryConfig = new SchemaRegistryConfig { Url = schemaRegistryUrl };
 
@@ -62,6 +63,7 @@ public class KafkaConsumerService : IKafkaConsumerService
             .Build();
 
         _topicName = topic;
+        _processedTopicName = processedTopic;
         _cartItemMessages = new Queue<KafkaMessage>();
         _processedMessages = new List<Message<string, CartItemProcessed>>();
     }
@@ -139,7 +141,6 @@ public class KafkaConsumerService : IKafkaConsumerService
     {
         try
         {
-            const string cartItemProcessedTopic = "cart-item-processed";
             var cartItemResult = new CartItemProcessed
             {
                 Product = cartItemRequest.Product,
@@ -162,7 +163,7 @@ public class KafkaConsumerService : IKafkaConsumerService
                 _processedMessages.Add(message);
             }
 
-            var result = await _producer.ProduceAsync(cartItemProcessedTopic, message);
+            var result = await _producer.ProduceAsync(_processedTopicName, message);
 
             Console.WriteLine(
                 $"\nMsg: Your cart request is queued at offset {result.Offset.Value} in the Topic {result.Topic}");

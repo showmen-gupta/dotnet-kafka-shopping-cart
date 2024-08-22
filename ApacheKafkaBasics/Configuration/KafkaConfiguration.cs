@@ -33,7 +33,7 @@ public static class KafkaConfiguration
         services.AddSingleton<KafkaConsumerService>(sp =>
         {
             var kafkaConfig = sp.GetRequiredService<IOptions<KafkaConfigSecrets>>().Value;
-            return new KafkaConsumerService(kafkaConfig.KafkaBroker, kafkaConfig.KafkaGroupId, kafkaConfig.KafkaTopic, kafkaConfig.SchemaRegistry);
+            return new KafkaConsumerService(kafkaConfig.KafkaBroker, kafkaConfig.KafkaGroupId, kafkaConfig.KafkaTopic, kafkaConfig.SchemaRegistry, kafkaConfig.KafkaProcessedTopic);
         });
 
         services.AddSingleton<IShoppingCartRepository, ShoppingCartRepositoryRepository>();
