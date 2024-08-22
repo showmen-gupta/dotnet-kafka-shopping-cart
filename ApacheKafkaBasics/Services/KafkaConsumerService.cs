@@ -16,6 +16,9 @@ public class KafkaConsumerService : IKafkaConsumerService
     private readonly string _topicName;
     private static Queue<KafkaMessage> _cartItemMessages = new();
     private readonly ConsumerConfig _consumerConfig;
+    private readonly List<Message<string, CartItemProcessed>> _processedMessages;
+    private readonly object _queueLock = new();
+
 
     private record KafkaMessage(string? Key, int? Partition, CartItem Message);
 
@@ -60,6 +63,7 @@ public class KafkaConsumerService : IKafkaConsumerService
 
         _topicName = topic;
         _cartItemMessages = new Queue<KafkaMessage>();
+        _processedMessages = new List<Message<string, CartItemProcessed>>();
     }
 
     public void StartCartConsumer(CancellationToken cancellationToken)
@@ -80,7 +84,6 @@ public class KafkaConsumerService : IKafkaConsumerService
                 var partition = result.Partition.Value;
 
                 _cartItemMessages.Enqueue(new KafkaMessage(key, partition, cartRequest));
-                Console.WriteLine(_cartItemMessages.Count);
                 _consumer.Commit(result);
                 _consumer.StoreOffset(result);
             }
@@ -148,12 +151,18 @@ public class KafkaConsumerService : IKafkaConsumerService
                     : "Declined: Your cart item has been declined to be processed."
             };
 
-            var result = await _producer.ProduceAsync(cartItemProcessedTopic,
-                new Message<string, CartItemProcessed>
-                {
-                    Key = $"{cartItemResult.Product.Name}-{DateTime.UtcNow.Ticks}",
-                    Value = cartItemResult
-                });
+            var message = new Message<string, CartItemProcessed>
+            {
+                Key = $"{cartItemResult.Product.Name}-{DateTime.UtcNow.Ticks}",
+                Value = cartItemResult
+            };
+            lock (_queueLock)
+            {
+                // TODO: preferably saving all the processed messages on a database table
+                _processedMessages.Add(message);
+            }
+
+            var result = await _producer.ProduceAsync(cartItemProcessedTopic, message);
 
             Console.WriteLine(
                 $"\nMsg: Your cart request is queued at offset {result.Offset.Value} in the Topic {result.Topic}");
@@ -165,9 +174,16 @@ public class KafkaConsumerService : IKafkaConsumerService
     }
 
 
-    
     public Task<IEnumerable<string>> GetAllProcessedMessages()
     {
-        throw new NotImplementedException();
+        // TODO:  preferable to fetch it from a database table that saves all the processed messages
+        lock (_queueLock)
+        {
+            var processedMessages = _processedMessages.Select(msg =>
+                    $"Key: {msg.Key}, Value: {msg.Value.Product.Name} - {msg.Value.Quantity} items, Total Price: {msg.Value.TotalPrice}, ProcessedBy: {msg.Value.ProcessedBy}, Result: {msg.Value.Result}")
+                .ToList();
+
+            return Task.FromResult<IEnumerable<string>>(processedMessages);
+        }
     }
 }

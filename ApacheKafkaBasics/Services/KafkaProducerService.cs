@@ -13,6 +13,8 @@ public class KafkaProducerService : IKafkaProducerService
     private readonly IProducer<string, CartItem> _producer;
     private readonly IAdminClient _adminClient;
     private readonly string _topicName;
+    private readonly List<Message<string, CartItem>> _queuedMessages;
+    private readonly object _queueLock = new();
 
     public KafkaProducerService(string brokerList, string kafkaTopic)
     {
@@ -36,6 +38,7 @@ public class KafkaProducerService : IKafkaProducerService
             .Build();
 
         _topicName = kafkaTopic;
+        _queuedMessages = new List<Message<string, CartItem>>();
     }
 
     public async Task CreateKafkaCartTopic(List<CartItem> cartItems)
@@ -66,12 +69,19 @@ public class KafkaProducerService : IKafkaProducerService
                          TotalPrice = cartItem.TotalPrice
                      }))
             {
-                var result = await _producer.ProduceAsync(_topicName,
-                    new Message<string, CartItem>
-                    {
-                        Key = $"{cartValues.Product.Name}-{DateTime.UtcNow.Ticks}",
-                        Value = cartValues
-                    });
+                var message = new Message<string, CartItem>
+                {
+                    Key = $"{cartValues.Product.Name}-{DateTime.UtcNow.Ticks}",
+                    Value = cartValues
+                };
+
+                lock (_queueLock)
+                {
+                    // TODO: preferably saving all the queued messages on a database table
+                    _queuedMessages.Add(message);
+                }
+
+                var result = await _producer.ProduceAsync(_topicName, message);
 
                 Console.WriteLine(
                     $"\nMsg: Your cart request is queued at offset {result.Offset.Value} in the Topic {result.Topic}");
@@ -92,8 +102,17 @@ public class KafkaProducerService : IKafkaProducerService
             throw;
         }
     }
+
     public Task<IEnumerable<string>> GetAllQueuedMessages()
     {
-        throw new NotImplementedException();
+        // TODO:  preferable to fetch it from a database table that saves all the queued messages
+        lock (_queueLock)
+        {
+            var queuedMessages = _queuedMessages.Select(msg =>
+                    $"Key: {msg.Key}, Value: {msg.Value.Product.Name} - {msg.Value.Quantity} items, Total Price: {msg.Value.TotalPrice}")
+                .ToList();
+
+            return Task.FromResult<IEnumerable<string>>(queuedMessages);
+        }
     }
 }
