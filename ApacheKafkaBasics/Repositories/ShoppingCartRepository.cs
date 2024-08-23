@@ -1,4 +1,5 @@
 using ApacheKafkaBasics.Interfaces;
+using ApacheKafkaBasics.Models.Dto;
 using Generated.Entity;
 
 namespace ApacheKafkaBasics.Repositories;
@@ -7,11 +8,11 @@ public class ShoppingCartRepositoryRepository : IShoppingCartRepository
 {
     private readonly List<CartItem> _items = [];
 
-    public Task<bool> AddProduct(Product product, int quantity)
+    public Task<bool> AddProduct(ProductDto productDto, int quantity)
     {
         try
         {
-            var existingItem = _items.Find(item => item.Product.ProductId == product.ProductId);
+            var existingItem = _items.Find(item => item.Product.ProductId == productDto.ProductId);
             if (existingItem != null)
                 // If the product already exists in the cart, increase the quantity
                 existingItem.Quantity += quantity;
@@ -19,9 +20,14 @@ public class ShoppingCartRepositoryRepository : IShoppingCartRepository
                 // Otherwise, add a new CartItem
                 _items.Add(new CartItem
                 {
-                    Product = product,
+                    Product = new Product
+                    {
+                        ProductId = productDto.ProductId,
+                        Name = productDto.Name,
+                        Price = productDto.Price
+                    },
                     Quantity = quantity,
-                    TotalPrice = product.Price * quantity
+                    TotalPrice = productDto.Price * quantity
                 });
 
             return Task.FromResult(true);
@@ -58,11 +64,15 @@ public class ShoppingCartRepositoryRepository : IShoppingCartRepository
         }
     }
 
-    public Task<List<CartItem>> GetCartItems()
+    public Task<List<CartItemDto>> GetCartItems()
     {
+        var dtoCartItems = new List<CartItemDto>();
         try
         {
-            return Task.FromResult(_items);
+            dtoCartItems.AddRange(from item in _items
+                let productDto = new ProductDto(item.Product.Name, item.Product.Price)
+                select new CartItemDto(productDto, item.Quantity));
+            return Task.FromResult(dtoCartItems);
         }
         catch (Exception ex)
         {

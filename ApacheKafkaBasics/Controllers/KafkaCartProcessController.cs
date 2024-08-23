@@ -3,6 +3,7 @@
 using ApacheKafkaBasics.Configuration;
 using ApacheKafkaBasics.Interfaces;
 using ApacheKafkaBasics.Services;
+using Generated.Entity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApacheKafkaBasics.Controllers;
@@ -23,9 +24,19 @@ public class KafkaCartProcessController(
     {
         var cartItems = await shoppingCartRepository.GetCartItems();
 
+        var cartItemsAvro = (from item in cartItems
+                let productsToAdd =
+                    new Product
+                    {
+                        ProductId = item.ProductDto.ProductId, Name = item.ProductDto.Name,
+                        Price = item.ProductDto.Price
+                    }
+                select new CartItem { Product = productsToAdd, Quantity = item.Quantity, TotalPrice = item.TotalPrice })
+            .ToList();
+
         if (cartItems.Count <= 0) return BadRequest("no item on the cart to send to kafka producer");
 
-        await kafkaProducerService.CreateKafkaCartTopic(cartItems);
+        await kafkaProducerService.CreateKafkaCartTopic(cartItemsAvro);
 
         return Ok("Message sent from producer to consumer to be processed");
     }

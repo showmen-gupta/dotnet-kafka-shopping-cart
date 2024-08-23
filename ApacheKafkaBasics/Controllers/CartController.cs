@@ -1,4 +1,5 @@
 using ApacheKafkaBasics.Interfaces;
+using ApacheKafkaBasics.Models.Dto;
 using Generated.Entity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,10 +10,10 @@ namespace ApacheKafkaBasics.Controllers;
 public class CartController(IShoppingCartRepository shoppingCartRepository) : Controller
 {
     [HttpPost("AddToCart")]
-    public async Task<IActionResult> AddToCart(Product product, int quantity)
+    public async Task<IActionResult> AddToCart(ProductDto productDto, int quantity)
     {
-        await shoppingCartRepository.AddProduct(product, quantity);
-        return Ok("Successfully Added product: " + product.Name);
+        await shoppingCartRepository.AddProduct(productDto, quantity);
+        return Ok("Successfully Added product: " + productDto.Name);
     }
 
     [HttpDelete("RemoveFromCart")]
