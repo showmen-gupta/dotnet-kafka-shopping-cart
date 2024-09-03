@@ -1,6 +1,5 @@
 using ApacheKafkaBasics.Interfaces;
 using ApacheKafkaBasics.Models.Dto;
-using Generated.Entity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApacheKafkaBasics.Controllers;
